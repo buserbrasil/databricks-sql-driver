@@ -13,3 +13,4 @@ pom.xml.asc
 .lsp
 .clj-kondo
 /plugins
+.cpcache
