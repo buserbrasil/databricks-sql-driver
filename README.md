@@ -25,6 +25,7 @@ Once the Metabase startup completes, you can access your Metabase at `localhost:
 
 Copy `host`, `http-path` and your `personal-access-token` to metabase form.
 
-<img src="screenshots/databricks-sql.png" alt="databricks" style="width:50%;"/>
-<img src="screenshots/metabase-form.png" alt="databricks" style="width:50%;"/>
+
+![](screenshots/databricks-sql.png)
+![](screenshots/metabase-form.png)
 
