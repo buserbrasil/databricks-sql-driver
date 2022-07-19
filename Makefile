@@ -20,3 +20,7 @@ run: cleanup
 	--mount type=bind,source=$(ROOT_DIR)/plugins,destination=/plugins \
 	--mount source=metabase,destination=/metabase.db \
 	--name metabase metabase/metabase
+
+first-run:
+	sudo docker pull metabase/metabase:latest
+	make run
