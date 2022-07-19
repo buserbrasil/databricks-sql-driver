@@ -16,11 +16,9 @@ make build
 ## Run Locally
 
 ```
-docker pull metabase/metabase:latest
-
-make run
+make first-run
 ```
-Once the Metabase startup completes, you can access your Metabase at `localhost:3000`.
+Once the Metabase startup completes, you can access your Metabase at `localhost:3000`, which pulls metabase docker image and then start this project. Next time you need to run this project again, you can use `make run` command.
 
 ## Add Data
 
