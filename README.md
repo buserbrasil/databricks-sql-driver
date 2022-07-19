@@ -22,9 +22,12 @@ make run
 ```
 Once the Metabase startup completes, you can access your Metabase at `localhost:3000`.
 
-## Usage
+## Add Data
 
-Copy `host`, `http-path` and your `personal-access-token` to metabase form.
+When you first access, fill some basic info and then go to "Add your data" section and follow these steps:
+1. Choose "Databricks SQL" source;
+2. Open your DataBricks SQL Server information at Databricks and copy `host`, `http-path` and your `personal-access-token` (first screenshot below).
+3. Fill these info into metabase form.
 
 
 ![](screenshots/databricks-sql.png)
