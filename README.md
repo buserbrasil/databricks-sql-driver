@@ -16,15 +16,16 @@ make build
 ## Run Locally
 
 ```
-docker pull metabase/metabase:latest
-
-make run
+make first-run
 ```
-Once the Metabase startup completes, you can access your Metabase at `localhost:3000`.
+Once the Metabase startup completes, you can access your Metabase at `localhost:3000`, which pulls metabase docker image and then start this project. Next time you need to run this project again, you can use `make run` command.
 
-## Usage
+## Add Data
 
-Copy `host`, `http-path` and your `personal-access-token` to metabase form.
+When you first access, fill some basic info and then go to "Add your data" section and follow these steps:
+1. Choose "Databricks SQL" source;
+2. Open your DataBricks SQL Server information at Databricks and copy `host`, `http-path` and your `personal-access-token` (first image below).
+3. Fill these info into metabase form (second image below).
 
 
 ![](screenshots/databricks-sql.png)
