@@ -16,7 +16,7 @@ cleanup:
 run: cleanup
 	@echo "deploy metabase with databricks-sql driver"
 	chmod 777 ./plugins
-	docker run -d -p 3000:3000 \
+	sudo docker run -d -p 3000:3000 \
 	--mount type=bind,source=$(ROOT_DIR)/plugins,destination=/plugins \
 	--mount source=metabase,destination=/metabase.db \
 	--name metabase metabase/metabase
