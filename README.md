@@ -31,3 +31,6 @@ When you first access, fill some basic info and then go to "Add your data" secti
 ![](screenshots/databricks-sql.png)
 ![](screenshots/metabase-form.png)
 
+## Contributors
+
+We thank all the people who have been part of the development of the databricks to metabase drive, especially @schumannc who started this project.
