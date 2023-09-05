@@ -2,7 +2,8 @@
  ["src" "resources"]
 
  :deps
- {org.clojure/core.logic {:mvn/version "1.0.0"}}
+ {org.clojure/core.logic {:mvn/version "1.0.0"}
+  com.databricks/databricks-jdbc {:mvn/version "2.6.32"}}
 
  ;; the stuff below is only for hacking on the driver locally and is not needed if you follow the instructions in the
  ;; README and create a `:local/root` dep for the driver and launch the REPL from the Metabase project rather than
