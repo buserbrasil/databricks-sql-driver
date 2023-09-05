@@ -3,7 +3,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 build:
 	@echo "build"
-	clj -X:build :project-dir "\"$(ROOT_DIR)\""
+	./bin/build.sh
 	mkdir -p ./plugins
 	cp ./target/databricks-sql.metabase-driver.jar ./plugins
 
