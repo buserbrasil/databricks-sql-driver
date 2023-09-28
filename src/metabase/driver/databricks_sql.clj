@@ -2,7 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [medley.core :as m]
-            [metabase.driver :as driver] 
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -28,9 +28,10 @@
    :pwd              token})
 
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :databricks-sql
+  "The Hive JDBC driver doesn't support `Connection.isValid()`,
+  so we need to supply a test query for c3p0 to use to validate
+  connections upon checkout."
   [driver database]
-  ;; The Hive JDBC driver doesn't support `Connection.isValid()`, so we need to supply a test query for c3p0 to use to
-  ;; validate connections upon checkout.
   (merge
    ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
    {"preferredTestQuery" "SELECT 1"}))
@@ -59,8 +60,8 @@
     #"map"              :type/Dictionary
     #".*"               :type/*))
 
-;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :databricks-sql
+  "workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata"
   [_ database]
   {:tables
    (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
@@ -70,8 +71,9 @@
          :schema (or (not-empty database)
                      (not-empty table-namespace))})))})
 
-;; Hive describe table result has commented rows to distinguish partitions
-(defn- valid-describe-table-row? [{:keys [col_name data_type]}]
+(defn- valid-describe-table-row?
+  "Hive describe table result has commented rows to distinguish partitions"
+  [{:keys [col_name data_type]}]
   (every? (every-pred (complement str/blank?)
                       (complement #(str/starts-with? % "#")))
           [col_name data_type]))
@@ -80,8 +82,8 @@
   (when s
     (str/replace s #"-" "_")))
 
-;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-table :databricks-sql
+  "workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata"
   [driver database {table-name :name, schema :schema}]
   {:name   table-name
    :schema schema
@@ -107,8 +109,8 @@
   strings so SQL injection is impossible; this isn't nice to look at, so use this for actually running a query."
   :friendly)
 
-;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
 (defmethod driver/execute-reducible-query :databricks-sql
+  "bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)"
   [driver {{sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
   (let [inner-query (-> (assoc inner-query
                                :remark (qp.util/query->remark :databricks-sql outer-query)
@@ -121,11 +123,11 @@
         query       (assoc outer-query :native inner-query)]
     ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
 
-;; 1.  SparkSQL doesn't support `.supportsTransactionIsolationLevel`
-;; 2.  SparkSQL doesn't support session timezones (at least our driver doesn't support it)
-;; 3.  SparkSQL doesn't support making connections read-only
-;; 4.  SparkSQL doesn't support setting the default result set holdability
 (defmethod sql-jdbc.execute/connection-with-timezone :databricks-sql
+  "1. SparkSQL doesn't support `.supportsTransactionIsolationLevel`
+   2. SparkSQL doesn't support session timezones (at least our driver doesn't support it)
+   3. SparkSQL doesn't support making connections read-only
+   4. SparkSQL doesn't support setting the default result set holdability"
   [driver database _timezone-id]
   (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
@@ -135,8 +137,8 @@
         (.close conn)
         (throw e)))))
 
-;; 1.  SparkSQL doesn't support setting holdability type to `CLOSE_CURSORS_AT_COMMIT`
 (defmethod sql-jdbc.execute/prepared-statement :databricks-sql
+  "1. SparkSQL doesn't support setting holdability type to `CLOSE_CURSORS_AT_COMMIT`"
   [driver ^Connection conn ^String sql params]
   (let [stmt (.prepareStatement conn sql
                                 ResultSet/TYPE_FORWARD_ONLY
@@ -149,8 +151,10 @@
         (.close stmt)
         (throw e)))))
 
-;; the current HiveConnection doesn't support .createStatement
-(defmethod sql-jdbc.execute/statement-supported? :databricks-sql [_] false)
+(defmethod sql-jdbc.execute/statement-supported? :databricks-sql
+  "the current HiveConnection doesn't support .createStatement"
+  [_]
+  false)
 
 (doseq [feature [:basic-aggregations
                  :binning
