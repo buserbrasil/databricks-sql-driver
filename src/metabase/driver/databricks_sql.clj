@@ -10,6 +10,7 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
+            [clojure.string :as str]
             [metabase.query-processor.util :as qp.util])
   (:import [java.sql Connection ResultSet]))
 
@@ -38,7 +39,7 @@
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks-sql
   [_ database-type]
-  (condp re-matches (name database-type)
+  (condp re-matches (str/lower-case (name database-type))
     #"boolean"          :type/Boolean
     #"tinyint"          :type/Integer
     #"smallint"         :type/Integer
