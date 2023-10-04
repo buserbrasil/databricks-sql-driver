@@ -1,0 +1,24 @@
+{
+    "name": "clojure",
+    "build": {
+        "dockerfile": "../Dockerfile"
+    },
+    "forwardPorts": [
+        3000
+    ],
+    "workspaceFolder": "/driver",
+    "mounts": [
+        {
+            "source": "${localWorkspaceFolder}",
+            "target": "${containerWorkspaceFolder}",
+            "type": "bind"
+        }
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "betterthantomorrow.calva"
+            ]
+        }
+    }
+}

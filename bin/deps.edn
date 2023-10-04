@@ -1,0 +1,5 @@
+;; ~/.clojure/deps.edn
+{:aliases
+ {:user/databricks-sql
+  {:extra-deps {metabase/databricks-sql {:local/root "/driver"}}
+   :jvm-opts   ["-Dmb.dev.additional.driver.manifest.paths=/driver/resources/metabase-plugin.yaml"]}}}
