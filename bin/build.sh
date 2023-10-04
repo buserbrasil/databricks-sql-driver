@@ -4,7 +4,7 @@
 DRIVER_PATH="$(pwd)"
 
 # switch to the local checkout of the Metabase repo
-cd ../metabase
+cd /metabase
 
 # Build driver. See explanation below
 clojure \
@@ -12,3 +12,7 @@ clojure \
   -X:build:databricks-sql \
   build-drivers.build-driver/build-driver! \
   "{:driver :databricks-sql, :project-dir \"$DRIVER_PATH\", :target-dir \"$DRIVER_PATH/target\"}"
+
+mkdir -p $DRIVER_PATH/plugins
+
+cp $DRIVER_PATH/target/databricks-sql.metabase-driver.jar $DRIVER_PATH/plugins

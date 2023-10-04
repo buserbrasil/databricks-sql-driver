@@ -1,11 +1,13 @@
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+METABASE_VERSION=v0.47.3
 
 build:
 	@echo "build"
-	./bin/build.sh
-	mkdir -p ./plugins
-	cp ./target/databricks-sql.metabase-driver.jar ./plugins
+	docker build . -t build-driver
+	docker run -it \
+	--mount type=bind,source=$(ROOT_DIR),destination=/driver \
+	build-driver:latest bash ./bin/build.sh
 
 cleanup:
 	@echo "cleanup"
@@ -16,11 +18,7 @@ cleanup:
 run: cleanup
 	@echo "deploy metabase with databricks-sql driver"
 	chmod 777 ./plugins
-	docker run -d -p 3000:3000 \
+	docker run -it -p 3000:3000 \
 	--mount type=bind,source=$(ROOT_DIR)/plugins,destination=/plugins \
-	--mount source=metabase,destination=/metabase.db \
-	--name metabase metabase/metabase
-
-first-run:
-	docker pull metabase/metabase:latest
-	make run
+	--mount source=metabase_data,destination=/metabase.db \
+	--name metabase metabase/metabase:$(METABASE_VERSION)

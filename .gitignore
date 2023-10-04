@@ -12,9 +12,11 @@ pom.xml.asc
 .hg/
 .lsp
 .clj-kondo
+.calva
 /plugins
 .cpcache
 
 # vscode
 .vscode
 .idea
+*.iml
