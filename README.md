@@ -1,5 +1,9 @@
 # Metabase Driver: Databricks SQL Warehouse
 
+This project is based on: 
+1. (Community Databricks Driver)[https://github.com/relferreira/metabase-sparksql-databricks-driver]
+2. (Databricks SparkSQL Driver) [https://github.com/metabase/metabase/blob/master/modules/drivers/sparksql]
+
 ## Installation
 
 Beginning with Metabase 0.32, drivers must be stored in a `plugins` directory in the same directory where `metabase.jar` is, or you can specify the directory by setting the environment variable `MB_PLUGINS_DIR`. There are a few options to get up and running with a custom driver.
