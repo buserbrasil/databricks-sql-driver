@@ -66,10 +66,6 @@
   [_driver]
   2)
 
-(defmethod sql.qp/honey-sql-version :databricks-sql
-  [_driver]
-  2)
-
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :databricks-sql
   [_ database]
