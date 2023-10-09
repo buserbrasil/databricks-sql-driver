@@ -63,6 +63,9 @@
     #"map"              :type/Dictionary
     #".*"               :type/*))
 
+(defmethod sql.qp/honey-sql-version :databricks-sql
+  [_driver]
+  2)
 
 ;; 1.  databricks-sql doesn't support `.supportsTransactionIsolationLevel`
 ;; 2.  databricks-sql doesn't support session timezones (at least our driver doesn't support it)
