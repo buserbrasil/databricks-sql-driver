@@ -62,6 +62,9 @@
     #"map"              :type/Dictionary
     #".*"               :type/*))
 
+(defmethod sql.qp/honey-sql-version :databricks-sql
+  [_driver]
+  2)
 
 (defmethod sql.qp/honey-sql-version :databricks-sql
   [_driver]
