@@ -1,6 +1,6 @@
 #!/bin/bash
-cp /driver/bin/deps.edn ~/.clojure/deps.edn
-cd /metabase
+#cp ./bin/deps.edn ~/.clojure/deps.edn
+cd ../metabase
 
 function nrepl() {
     clojure -M:user/databricks-sql:nrepl
