@@ -1,6 +1,6 @@
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-METABASE_VERSION=v0.47.3
+METABASE_VERSION=v0.49.3
 
 build:
 	@echo "build"
