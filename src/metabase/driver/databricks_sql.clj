@@ -2,7 +2,10 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [medley.core :as m]
+            [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc
+             [common :as sql-jdbc.common]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -11,23 +14,35 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.util :as qp.util])
-  (:import [java.sql Connection ResultSet]))
+  (:import 
+   (java.sql Connection ResultSet)))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :databricks-sql, :parent :sql-jdbc)
 
+(defn- sparksql-databricks
+  "Create a database specification for a Spark SQL database."
+  [{:keys [host db jdbc-flags] :as opts}]
+  (merge
+   {:classname   "metabase.driver.FixedDatabricksDriver"
+    :subprotocol "databricks"
+    :subname     (str "//" host ":443/" db jdbc-flags)}
+   (dissoc opts :host :db :jdbc-flags)))
+
 (defmethod sql-jdbc.conn/connection-details->spec :databricks-sql
-  [_ {:keys [host http-path token db]}]
-  {:classname        "com.databricks.client.jdbc.Driver"
-   :subprotocol      "databricks"
-   :subname          (str "//" host ":443/" db)
-   :transportMode    "http"
-   :ssl              1
-   :AuthMech         3
-   :httpPath         http-path
-   :uid              "token"
-   :pwd              token})
+  [_ details]
+  (-> details
+      (assoc :jdbc-flags (str ";transportMode=http"
+                              ";ssl=1"
+                              ";AuthMech=3"
+                              ";LogLevel=0"
+                              ";UID=token"
+                              ";PWD=" (:token details)
+                              ";httpPath=" (:http-path details))) 
+      (select-keys [:host :db :jdbc-flags :dbname])
+      sparksql-databricks
+      (sql-jdbc.common/handle-additional-options details)))
 
 ;; The Hive JDBC driver doesn't support `Connection.isValid()`,
 ;; so we need to supply a test query for c3p0 to use to validate
