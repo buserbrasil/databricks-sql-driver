@@ -1,8 +1,8 @@
 # Metabase Driver: Databricks SQL Warehouse
 
 This project is based on: 
-1. (Community Databricks Driver)[https://github.com/relferreira/metabase-sparksql-databricks-driver]
-2. (Databricks SparkSQL Driver) [https://github.com/metabase/metabase/blob/master/modules/drivers/sparksql]
+1. [Community Databricks Driver](https://github.com/relferreira/metabase-sparksql-databricks-driver)
+2. [Databricks SparkSQL Driver](https://github.com/metabase/metabase/blob/master/modules/drivers/sparksql)
 
 ## Installation
 
