@@ -2,7 +2,6 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [medley.core :as m]
-            [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]]
@@ -25,7 +24,7 @@
   "Create a database specification for a Spark SQL database."
   [{:keys [host db jdbc-flags] :as opts}]
   (merge
-   {:classname   "metabase.driver.FixedDatabricksDriver"
+   {:classname   "metabase.driver.databricks-sql.FixedDatabricksDriver"
     :subprotocol "databricks"
     :subname     (str "//" host ":443/" db jdbc-flags)}
    (dissoc opts :host :db :jdbc-flags)))

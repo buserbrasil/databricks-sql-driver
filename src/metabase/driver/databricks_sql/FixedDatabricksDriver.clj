@@ -1,11 +1,11 @@
-(ns metabase.driver.FixedDatabricksDriver
+(ns metabase.driver.databricks-sql.FixedDatabricksDriver
   (:gen-class
    :extends com.databricks.client.jdbc.Driver
    :exposes-methods {connect superConnect}
    :init init
    :prefix "driver-"
    :constructors {[] []})
-  (:require [metabase.driver.connection :as connection]))
+  (:require [metabase.driver.databricks-sql.connection :as connection]))
 
 (defn driver-init
   "Initializes the Spark driver"

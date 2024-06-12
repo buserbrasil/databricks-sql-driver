@@ -1,5 +1,6 @@
-(ns metabase.driver.connection
-  (:require [clojure.reflect])
+(ns metabase.driver.databricks-sql.connection
+  (:require [clojure.reflect]
+            [clojure.set])
   (:import [java.sql ResultSet SQLException]))
 
 (defmacro decorator
