@@ -11,4 +11,4 @@
  :aliases
  {:dev
   {:extra-deps
-   {com.github.metabase/metabase {:git/tag "v0.49.15", :git/sha "77a08d7710d79f82c52c1d1e3cd3d4edc10bd8406d93eec9988d12158334ecc3"}}}}}
+   {com.github.metabase/metabase {:git/tag "v0.50.3", :git/sha "def3903f275276e339f2ed99bb37fd2f85652b62f8f3be50cb0e708f1eeaffbc"}}}}}
