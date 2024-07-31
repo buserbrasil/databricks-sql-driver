@@ -11,16 +11,18 @@ driver:
     parent: sql-jdbc
     connection-properties:
       - host
-      - name: http-path 
+      - name: http-path
         display-name: HTTP path
         required: true
-      - name: token
-        display-name: Personal Access Token
-        required: true 
+      - merge:
+          - password
+          - name: token
+            display-name: Personal Access Token
+            required: true
       - name: db
         display-name: Database
         default: default
-        required: true 
+        required: true
 init:
   - step: load-namespace
     namespace: metabase.driver.databricks-sql
