@@ -20,3 +20,6 @@ pom.xml.asc
 .vscode
 .idea
 *.iml
+
+# project file/folder ignore
+/metabase_data

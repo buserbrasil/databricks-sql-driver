@@ -6,8 +6,8 @@ build:
 	@echo "build"
 	docker build . -t build-driver
 	docker run -it \
-	--mount type=bind,source=$(ROOT_DIR),destination=/driver \
-	build-driver:latest bash ./bin/build.sh
+		-v $(ROOT_DIR):/driver \
+		build-driver:latest bash ./bin/build.sh
 
 cleanup:
 	@echo "cleanup"
@@ -19,6 +19,6 @@ run: cleanup
 	@echo "deploy metabase with databricks-sql driver"
 	chmod 777 ./plugins
 	docker run -it -p 3000:3000 \
-	--mount type=bind,source=$(ROOT_DIR)/plugins,destination=/plugins \
-	--mount source=metabase_data,destination=/metabase.db \
-	--name metabase metabase/metabase:$(METABASE_VERSION)
+		-v $(ROOT_DIR)/plugins:/plugins \
+		-v $(ROOT_DIR)/metabase_data:/metabase.db \
+		metabase/metabase:$(METABASE_VERSION)
