@@ -149,10 +149,11 @@
         query       (assoc outer-query :native inner-query)]
     ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
 
-;; 1.  SparkSQL doesn't support `.supportsTransactionIsolationLevel`
-;; 2.  SparkSQL doesn't support session timezones (at least our driver doesn't support it)
-;; 3.  SparkSQL doesn't support making connections read-only
-;; 4.  SparkSQL doesn't support setting the default result set holdability
+;; 1. SparkSQL doesn't support `.supportsTransactionIsolationLevel`
+;; 2. SparkSQL doesn't support session timezones (at least our driver doesn't support it)
+;; 3. SparkSQL doesn't support making connections read-only
+;; 4. SparkSQL doesn't support setting the default result set holdability
+;; 5. SparkSQL doesn't support `CLOSE_CURSORS_AT_COMMIT`, but implement in FixedDatabricksDriver
 (defmethod sql-jdbc.execute/do-with-connection-with-options :databricks-sql
   [driver db-or-id-or-spec options f]
   (sql-jdbc.execute/do-with-resolved-connection
@@ -162,14 +163,17 @@
    (fn [^Connection conn]
      (when-not (sql-jdbc.execute/recursive-connection?)
        (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED))
+     (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
+     (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
      (f conn))))
 
-;; 1.  SparkSQL doesn't support setting holdability type to `CLOSE_CURSORS_AT_COMMIT`
+;; CLOSE_CURSORS_AT_COMMIT: via fixed-databricks-driver and apply to via decorator `com.databricks.client.jdbc.Driver`
 (defmethod sql-jdbc.execute/prepared-statement :databricks-sql
   [driver ^Connection conn ^String sql params]
   (let [stmt (.prepareStatement conn sql
                                 ResultSet/TYPE_FORWARD_ONLY
-                                ResultSet/CONCUR_READ_ONLY)]
+                                ResultSet/CONCUR_READ_ONLY
+                                ResultSet/CLOSE_CURSORS_AT_COMMIT)]
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (sql-jdbc.execute/set-parameters! driver stmt params)
