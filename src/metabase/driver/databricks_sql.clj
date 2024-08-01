@@ -53,7 +53,7 @@
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks-sql
   [_ database-type]
-  (condp re-matches (str/lower-case (name database-type))
+  (condp re-matches (string/lower-case (name database-type))
     #"boolean"          :type/Boolean
     #"tinyint"          :type/Integer
     #"smallint"         :type/Integer
@@ -81,7 +81,7 @@
 
 (defn- dash-to-underscore [s]
   (when s
-    (str/replace s #"-" "_")))
+    (string/replace s #"-" "_")))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :databricks-sql
@@ -100,8 +100,8 @@
 
 ;; Hive describe table result has commented rows to distinguish partitions
 (defn- valid-describe-table-row? [{:keys [col_name data_type]}]
-  (every? (every-pred (complement str/blank?)
-                      (complement #(str/starts-with? % "#")))
+  (every? (every-pred (complement string/blank?)
+                      (complement #(string/starts-with? % "#")))
           [col_name data_type]))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
