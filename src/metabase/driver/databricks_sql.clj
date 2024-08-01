@@ -1,20 +1,19 @@
 (ns metabase.driver.databricks-sql
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
+            [clojure.string :as string]
             [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc
-             [common :as sql-jdbc.common]]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.util.log :as log]
             [metabase.legacy-mbql.util :as mbql.u]
             [metabase.query-processor.util :as qp.util])
-  (:import 
-   (java.sql Connection ResultSet)))
+  (:import [java.sql Connection ResultSet]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +37,7 @@
                               ";LogLevel=0"
                               ";UID=token"
                               ";PWD=" (:token details)
-                              ";httpPath=" (:http-path details))) 
+                              ";httpPath=" (:http-path details)))
       (select-keys [:host :db :jdbc-flags :dbname])
       sparksql-databricks
       (sql-jdbc.common/handle-additional-options details)))
