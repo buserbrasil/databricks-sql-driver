@@ -2,10 +2,11 @@
  ["src" "resources"]
 
  :deps
- {com.databricks/databricks-jdbc {:mvn/version "2.6.38"}}
+ {com.databricks/databricks-jdbc {:mvn/version "2.6.38"}
+  cheshire/cheshire              {:mvn/version "5.13.0"}
+  clj-http/clj-http              {:mvn/version "3.13.0"}}
 
-
- ;; the stuff below is only for hacking on the driver locally and is not needed if you follow the instructions in the
+;; the stuff below is only for hacking on the driver locally and is not needed if you follow the instructions in the
  ;; README and create a `:local/root` dep for the driver and launch the REPL from the Metabase project rather than
  ;; from here
  :aliases

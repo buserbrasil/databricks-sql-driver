@@ -12,8 +12,10 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util.log :as log]
             [metabase.legacy-mbql.util :as mbql.u]
-            [metabase.query-processor.util :as qp.util])
-  (:import [java.sql Connection ResultSet]))
+            [metabase.query-processor.util :as qp.util]
+            [clj-http.client :as http]
+            [cheshire.core :as json])
+  (:import [java.sql Connection ResultSet SQLException]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,62 +30,77 @@
     :subname     (str "//" host ":443/" db jdbc-flags)}
    (dissoc opts :host :db :jdbc-flags)))
 
+(defn- build-jdbc-flags
+  [details]
+  (str ";transportMode=http"
+       ";ssl=1"
+       ";AuthMech=3"
+       ";LogLevel=0"
+       ";UID=token"
+       ";PWD=" (:token details)
+       ";httpPath=" (:http-path details)))
+
 (defmethod sql-jdbc.conn/connection-details->spec :databricks-sql
   [_ details]
   (-> details
-      (assoc :jdbc-flags (str ";transportMode=http"
-                              ";ssl=1"
-                              ";AuthMech=3"
-                              ";LogLevel=0"
-                              ";UID=token"
-                              ";PWD=" (:token details)
-                              ";httpPath=" (:http-path details)))
+      (assoc :jdbc-flags (build-jdbc-flags details))
       (select-keys [:host :db :jdbc-flags :dbname])
       sparksql-databricks
       (sql-jdbc.common/handle-additional-options details)))
 
-;; The Hive JDBC driver doesn't support `Connection.isValid()`,
-;; so we need to supply a test query for c3p0 to use to validate
-;; connections upon checkout.
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :databricks-sql
   [driver database]
   (merge
    ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
    {"preferredTestQuery" "SELECT 1"}))
 
+(defn- map-database-type
+  [database-type]
+  (let [db-type (string/lower-case (name database-type))]
+    (cond
+      (re-matches #"boolean" db-type)          :type/Boolean
+      (re-matches #"tinyint" db-type)          :type/Integer
+      (re-matches #"smallint" db-type)         :type/Integer
+      (re-matches #"int" db-type)              :type/Integer
+      (re-matches #"bigint" db-type)           :type/BigInteger
+      (re-matches #"float" db-type)            :type/Float
+      (re-matches #"double" db-type)           :type/Float
+      (re-matches #"double precision" db-type) :type/Double
+      (re-matches #"decimal.*" db-type)        :type/Decimal
+      (re-matches #"char.*" db-type)           :type/Text
+      (re-matches #"varchar.*" db-type)        :type/Text
+      (re-matches #"string.*" db-type)         :type/Text
+      (re-matches #"binary*" db-type)          :type/*
+      (re-matches #"date" db-type)             :type/Date
+      (re-matches #"time" db-type)             :type/Time
+      (re-matches #"timestamp" db-type)        :type/DateTime
+      (re-matches #"interval" db-type)         :type/*
+      (re-matches #"array.*" db-type)          :type/Array
+      (re-matches #"map" db-type)              :type/Dictionary
+      :else                                    :type/*)))
+
 (defmethod sql-jdbc.sync/database-type->base-type :databricks-sql
   [_ database-type]
-  (condp re-matches (string/lower-case (name database-type))
-    #"boolean"          :type/Boolean
-    #"tinyint"          :type/Integer
-    #"smallint"         :type/Integer
-    #"int"              :type/Integer
-    #"bigint"           :type/BigInteger
-    #"float"            :type/Float
-    #"double"           :type/Float
-    #"double precision" :type/Double
-    #"decimal.*"        :type/Decimal
-    #"char.*"           :type/Text
-    #"varchar.*"        :type/Text
-    #"string.*"         :type/Text
-    #"binary*"          :type/*
-    #"date"             :type/Date
-    #"time"             :type/Time
-    #"timestamp"        :type/DateTime
-    #"interval"         :type/*
-    #"array.*"          :type/Array
-    #"map"              :type/Dictionary
-    #".*"               :type/*))
+  (map-database-type database-type))
 
 (defmethod sql.qp/honey-sql-version :databricks-sql
   [_driver]
   2)
 
-(defn- dash-to-underscore [s]
-  (when s
-    (string/replace s #"-" "_")))
+(defn- dash-to-underscore
+  [s]
+  (some-> s
+          (string/replace #"-" "_")))
 
-;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
+(defn- fetch-tables
+  [conn]
+  (->> (jdbc/query {:connection conn} ["show tables"])
+       (map (fn [{:keys [database tablename tab_name], table-namespace :namespace}]
+              {:name   (or tablename tab_name) ; column name differs dependendo do servidor (SparkSQL, hive, Impala)
+               :schema (or (not-empty database)
+                           (not-empty table-namespace))}))
+       (into #{})))
+
 (defmethod driver/describe-database :databricks-sql
   [driver database]
   {:tables
@@ -91,20 +108,29 @@
     driver
     database
     nil
-    (fn [^Connection conn]
-      (set
-       (for [{:keys [database tablename tab_name], table-namespace :namespace} (jdbc/query {:connection conn} ["show tables"])]
-         {:name   (or tablename tab_name) ; column name differs depending on server (SparkSQL, hive, Impala)
-          :schema (or (not-empty database)
-                      (not-empty table-namespace))}))))})
+    fetch-tables)})
 
-;; Hive describe table result has commented rows to distinguish partitions
-(defn- valid-describe-table-row? [{:keys [col_name data_type]}]
+(defn- valid-describe-table-row?
+  [{:keys [col_name data_type]}]
   (every? (every-pred (complement string/blank?)
                       (complement #(string/starts-with? % "#")))
           [col_name data_type]))
 
-;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
+(defn- fetch-table-fields
+  [driver conn schema table-name]
+  (let [results (jdbc/query {:connection conn} [(format
+                                                 "describe %s"
+                                                 (sql.u/quote-name driver :table
+                                                                   (dash-to-underscore schema)
+                                                                   (dash-to-underscore table-name)))])]
+    (set
+     (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed results)
+           :when (valid-describe-table-row? result)]
+       {:name              col-name
+        :database-type     data-type
+        :base-type         (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))
+        :database-position idx}))))
+
 (defmethod driver/describe-table :databricks-sql
   [driver database {table-name :name, schema :schema}]
   {:name   table-name
@@ -115,18 +141,7 @@
     database
     nil
     (fn [^Connection conn]
-      (let [results (jdbc/query {:connection conn} [(format
-                                                     "describe %s"
-                                                     (sql.u/quote-name driver :table
-                                                                       (dash-to-underscore schema)
-                                                                       (dash-to-underscore table-name)))])]
-        (set
-         (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed results)
-               :when (valid-describe-table-row? result)]
-           {:name              col-name
-            :database-type     data-type
-            :base-type         (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))
-            :database-position idx})))))})
+      (fetch-table-fields driver conn schema table-name)))})
 
 (def ^:dynamic *param-splice-style*
   "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
@@ -135,7 +150,12 @@
   strings so SQL injection is impossible; this isn't nice to look at, so use this for actually running a query."
   :friendly)
 
-;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
+(defn- kill-databricks-query
+  [execution-id token]
+  (http/post (str "https://<databricks-instance>/api/2.0/sql/statements/cancel")
+             {:headers {"Authorization" (str "Bearer " token)}
+              :body    (json/write-str {:statement_id execution-id})}))
+
 (defmethod driver/execute-reducible-query :databricks-sql
   [driver {{sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
   (let [inner-query (-> (assoc inner-query
@@ -147,13 +167,14 @@
                                :max-rows (mbql.u/query->max-rows-limit outer-query))
                         (dissoc :params))
         query       (assoc outer-query :native inner-query)]
-    ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
+    (try
+      ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)
+      (catch SQLException e
+        (let [execution-id (.getExecutionId e)
+              token        (:token (sql-jdbc.conn/connection-details->spec :databricks-sql query))]
+          (kill-databricks-query execution-id token)
+          (throw e))))))
 
-;; 1. SparkSQL doesn't support `.supportsTransactionIsolationLevel`
-;; 2. SparkSQL doesn't support session timezones (at least our driver doesn't support it)
-;; 3. SparkSQL doesn't support making connections read-only
-;; 4. SparkSQL doesn't support setting the default result set holdability
-;; 5. SparkSQL doesn't support `CLOSE_CURSORS_AT_COMMIT`, but implement in FixedDatabricksDriver
 (defmethod sql-jdbc.execute/do-with-connection-with-options :databricks-sql
   [driver db-or-id-or-spec options f]
   (sql-jdbc.execute/do-with-resolved-connection
@@ -167,7 +188,6 @@
      (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
      (f conn))))
 
-;; CLOSE_CURSORS_AT_COMMIT: via fixed-databricks-driver and apply to via decorator `com.databricks.client.jdbc.Driver`
 (defmethod sql-jdbc.execute/prepared-statement :databricks-sql
   [driver ^Connection conn ^String sql params]
   (let [stmt (.prepareStatement conn sql
@@ -182,7 +202,6 @@
         (.close stmt)
         (throw e)))))
 
-;; the current HiveConnection doesn't support .createStatement
 (defmethod sql-jdbc.execute/statement-supported? :databricks-sql [_] false)
 
 (doseq [[feature supported?] {:basic-aggregations              true
@@ -196,8 +215,6 @@
                               :test/jvm-timezone-setting       false}]
   (defmethod driver/database-supports? [:databricks-sql feature] [_driver _feature _db] supported?))
 
-;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
-;; implementation, and we don't want to stomp over that if it was loaded already
 (when-not (get (methods driver/database-supports?) [:databricks-sql :foreign-keys])
   (defmethod driver/database-supports? [:databricks-sql :foreign-keys] [_driver _feature _db] true))
 
