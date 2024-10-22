@@ -35,6 +35,16 @@
                        `(~name ~@(for [[name & rest] bodies]
                                    rest)))))))))
 
+(def get-holdability-fn
+  ResultSet/CLOSE_CURSORS_AT_COMMIT)
+
+(defn- set-read-only-fn
+  [conn read-only?]
+  (when (.isClosed conn)
+    (throw (SQLException. "Connection is closed")))
+  (when read-only?
+    (throw (SQLException. "Enabling read-only mode is not supported"))))
+
 (defn decorate-and-fix
   [impl]
   (when impl
@@ -43,10 +53,7 @@
      impl
      (getHoldability
       []
-      ResultSet/CLOSE_CURSORS_AT_COMMIT)
+      get-holdability-fn)
      (setReadOnly
       [read-only?]
-      (when (.isClosed this)
-        (throw (SQLException. "Connection is closed")))
-      (when read-only?
-        (throw (SQLException. "Enabling read-only mode is not supported")))))))
+      (set-read-only-fn this read-only?)))))
